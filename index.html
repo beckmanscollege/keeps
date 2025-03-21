@@ -1,0 +1,1638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Sheet Data</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <style>
+        @font-face {
+            font-family: 'TexGyreHero';
+            src: url('fonts/texgyreheroscn-regular.otf') format('opentype');
+        }
+        @font-face {
+            font-family: 'TexGyreHeroBoldItalic';
+            src: url('fonts/texgyreheroscn-bolditalic.otf') format('opentype');
+        }
+        @font-face {
+            font-family: 'TexGyreHeroBold';
+            src: url('fonts/texgyreheroscn-bold.otf') format('opentype');
+        }
+
+        body {
+            font-family: "TexGyreHero", arial;
+            font-size: 12px;
+            background-color: rgb(190, 190, 190);
+            margin: 0;
+            padding: 0;
+            position: relative;
+            min-height: 100vh;
+            text-transform: uppercase;
+            color:rgb(30, 30, 30);
+            /* Hide scrollbar for Chrome, Safari and Opera */
+            &::-webkit-scrollbar {
+                display: none;
+            }
+            /* Hide scrollbar for IE, Edge and Firefox */
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+        #video-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: -1;
+            filter: blur(20px);
+        }
+        #output {
+            position: relative;
+            z-index: 1;
+            padding: 0;
+            transform: translateZ(0); /* Create a new stacking context */
+            will-change: transform; /* Optimize for animations */
+    }
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 15px;
+            margin-top: 0; /* Remove top margin since we have the search box */
+            padding: 0 20px;
+            position: relative;
+            transform: translateZ(0); /* Create a new stacking context */
+            will-change: transform; /* Optimize for animations */
+        }
+        /* Make the header row sticky */
+        .header-row {
+            position: sticky;
+            top: 15px;
+            z-index: 100;
+            background: transparent;
+            margin-top: 15px; /* Add margin to match row spacing */
+            transform: translateZ(0); /* Create a new stacking context */
+            will-change: transform; /* Optimize for animations */
+        }
+        /* Add a subtle shadow to the sticky header */
+        .header-row th {
+            background: rgba(255, 255, 255, 0.25);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 50px;
+            text-align: center;
+            margin: 0;
+            padding: 5px;
+            z-index: 100;
+            transform: translateZ(0); /* Create a new stacking context */
+            will-change: transform; /* Optimize for animations */
+        }
+        td, th {
+            padding: 5px;
+            text-align: left;
+            background: rgba(255, 255, 255, 0.25);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            overflow: visible;
+            position: relative;
+            z-index: 1;
+            transform: translateZ(0); /* Create a new stacking context */
+            will-change: transform; /* Optimize for animations */
+        }
+        td:hover, th:hover {
+            background: rgba(255, 255, 255, 0.9);
+        }
+        td:hover span, th:hover span {
+            color: rgb(0, 0, 0);
+        }
+        td span, th span {
+            color: rgb(255, 255, 255);
+            font-weight: bold;
+            transition: color 0.3s ease;
+        }
+        th {
+            background: rgba(255, 255, 255, 0.25);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+        tr[class*="1"] {
+            display: none;
+        }
+        /* Center reset button in its cell */
+        th:first-child {
+            text-align: center;
+            vertical-align: middle;
+            padding: 5px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-height: 40px;
+            background: rgba(255, 255, 255, 0.25);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+        th:first-child:hover {
+            background: rgba(255, 255, 255, 0.9);
+        }
+        th:first-child:hover span {
+            color: rgb(0, 0, 0);
+        }
+        .reset-button {
+            background: transparent;
+            border: none;
+            color: rgb(30, 30, 30);
+            padding: 0;
+            text-align: center;
+            text-decoration: none;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 12px;
+            margin: 0;
+            cursor: pointer;
+            width: 100%;
+            height: 100%;
+            font-family: "TexGyreHero", arial;
+        }
+        .sortable {
+            cursor: pointer;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        .sortable:hover {
+            background: rgba(255, 255, 255, 0.9);
+        }
+        .sortable:hover span {
+            color: rgb(0, 0, 0);
+        }
+        .sortable.asc::after {
+            content: '';
+            position: absolute;
+            right: 5px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 18px;
+            height: 18px;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ffffff'%3E%3Cpath d='M7 14l5-5 5 5z'/%3E%3C/svg%3E");
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            opacity: 1;
+        }
+        .sortable.desc::after {
+            content: '';
+            position: absolute;
+            right: 5px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 18px;
+            height: 18px;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ffffff'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            opacity: 1;
+        }
+        .G.contains-ja:hover {
+            background-color: rgb(85, 255, 85, 0.5);
+        }
+        .contains-kanske:hover {
+            background-color: rgb(255, 255, 0, 0.5);
+        }
+        .contains-nej:hover {
+            background-color: rgb(255, 0, 0, 0.5);
+        }
+        /* Center images in column B cells */
+        td.B {
+            text-align: center;
+            vertical-align: middle;
+            background-color: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            padding: 0;
+            transition: all 0.3s ease;
+            position: relative;
+            z-index: 1;
+            overflow: visible;
+            width: 100px; /* Base width */
+            height: 100px; /* Base height */
+        }
+        td.B img {
+            width: 100%;
+            height: 100%;
+            transition: all 0.3s ease;
+            filter: grayscale(1);
+            display: block;
+            margin: 0;
+            border-radius: 10px;
+            position: relative;
+            z-index: 1;
+            object-fit: cover;
+        }
+        /* Clean hover effect implementation */
+        td.B.hover-effect {
+            z-index: 100;
+            background-color: transparent !important;
+            width: 50vw !important; /* Fixed width on hover */
+            height: 400px !important; /* Fixed height on hover (approximately 4 rows) */
+            position: relative;
+        }
+        td.B.hover-effect img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            filter: grayscale(0);
+            z-index: 9999;
+        }
+        tr {
+            transition: all 0.3s ease;
+            height: auto;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            will-change: opacity;
+        }
+        
+        /* Apply bold font to all header cells */
+        th span {
+            font-family: "TexGyreHeroBold", arial;
+        }
+        
+        /* Apply bold italic font to row 2 */
+        tr[class*="3"] span {
+            font-family: "TexGyreHeroBoldItalic", arial;
+        }
+        /* Center align specific columns */
+        td.A, td.C, td.E, td.G {
+            text-align: center;
+        }
+        /* Apply italic font and larger size to column A */
+        td.A span {
+            font-family: "TexGyreHeroBoldItalic", arial;
+            font-size: 12px; /* Default size */
+        }
+
+        /* Floating text box styles */
+        .floating-text {
+            position: fixed;
+            background-color: rgba(255, 255, 255, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            padding: 10px;
+            color: rgb(30, 30, 30);
+            font-weight: normal;
+            z-index: 9999;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            font-size: 20px;
+            /* mix-blend-mode: difference; */
+        }
+        .floating-text.visible {
+            opacity: 1;
+        }
+
+        /* Add styles for filtered cells */
+        .filtered-cell {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .filtered-cell:hover {
+            background: rgba(255, 255, 255, 0.9);
+        }
+        .filtered-cell:hover span {
+            color: rgb(0, 0, 0);
+        }
+        .filtered-cell.active {
+            background: rgba(255, 255, 255, 0.9);
+        }
+        .filtered-cell.active span {
+            color: rgb(0, 0, 0);
+        }
+        tr.hidden {
+            display: none !important;
+        }
+        tr.visible {
+            display: table-row !important;
+        }
+
+        /* Add styles for resizable columns */
+        .resizable {
+            position: relative;
+        }
+        .resize-handle {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 10px;
+            cursor: col-resize;
+            background: transparent;
+            opacity: 0;
+        }
+        .resize-handle.left {
+            left: -5px;
+        }
+        .resize-handle.right {
+            right: -5px;
+        }
+        .resize-handle:hover {
+            background: transparent;
+        }
+        .resizing {
+            user-select: none;
+            cursor: col-resize;
+        }
+
+        /* Add styles for search box */
+        .search-container {
+            position: relative;
+            z-index: 20;
+            width: 15vw;
+            margin-right: 20px;
+            display: flex;
+            justify-content: flex-end;
+            transition: opacity 0.3s ease;
+            height: 20px;
+            align-items: center;
+        }
+        .search-container.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .search-box {
+            width: 100%;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.25);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 50px;
+            padding: 0 15px;
+            font-family: "TexGyreHero", arial;
+            font-size: 12px;
+            color: rgb(255, 255, 255);
+            transition: all 0.3s ease;
+        }
+        .search-box::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+        }
+        .search-box:focus {
+            outline: none;
+            background: rgba(255, 255, 255, 0.9);
+            color: rgb(0, 0, 0);
+        }
+        .search-box:focus::placeholder {
+            color: rgba(0, 0, 0, 0.7);
+        }
+
+        /* Add styles for scroll-to-top button */
+        .scroll-to-top {
+            position: fixed;
+            bottom: 25px;
+            right: 25px;
+            width: fit-content;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.25);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 50px;
+            padding: 0 15px;
+            font-family: "TexGyreHero", arial;
+            font-size: 12px;
+            color: rgb(255, 255, 255);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            white-space: nowrap;
+        }
+
+        .scroll-to-top.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .scroll-to-top:hover {
+            background: rgba(255, 255, 255, 0.9);
+            color: rgb(0, 0, 0);
+        }
+
+        /* Add styles for image spin animation */
+        @keyframes spin {
+            from {
+                transform: rotateY(0deg);
+            }
+            to {
+                transform: rotateY(360deg);
+            }
+        }
+        .spinning-image {
+            transform-style: preserve-3d;
+        }
+        .spinning-image.spin {
+            animation: spin 0.6s linear forwards;
+        }
+
+        /* Add styles for voting buttons */
+        .vote-cell {
+            text-align: center;
+            padding: 0;
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            width: 100%;
+            position: relative;
+            z-index: 2;
+        }
+        .vote-button {
+            flex: 1;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 0;
+            padding: 0;
+            margin: 0;
+            font-family: "TexGyreHero", arial;
+            font-size: 12px;
+            color: rgb(255, 255, 255);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 50px;
+            width: 100%;
+            position: relative;
+            z-index: 1;
+        }
+        /* Default styling for KEEP button */
+        .vote-button:first-child {
+            background: rgba(75, 255, 130, 0.25);
+            border-top-left-radius: 10px;
+            border-top-right-radius: 10px;
+            border-bottom: none;
+        }
+        /* Default styling for THROW button */
+        .vote-button:last-child {
+            background: rgba(255, 75, 75, 0.25);
+            border-bottom-left-radius: 10px;
+            border-bottom-right-radius: 10px;
+            border-top: none;
+        }
+        .vote-button:hover {
+            color: rgb(255, 255, 255);
+            background: rgba(255, 255, 255, 0.9) !important;
+        }
+        .vote-button.keep:hover {
+            background: rgba(85, 255, 85, 0.25) !important;
+            box-shadow: 0 0 15px rgba(85, 255, 85, 0.5);
+        }
+        .vote-button.throw:hover {
+            background: rgba(255, 0, 0, 0.25) !important;
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.5);
+        }
+
+        /* Make column G background transparent */
+        td.G {
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            padding: 0;
+            height: 100%;
+        }
+        td.G span {
+            display: none;
+        }
+
+        /* Score range hover effects */
+        td.A[data-score-range="low"]:hover {
+            background: rgba(145, 198, 255, 0.5) !important;
+            box-shadow: 0 0 30px rgba(103, 139, 255, 1);
+        }
+        td.A[data-score-range="medium"]:hover {
+            background: rgba(103, 139, 255, 0.5) !important;
+            box-shadow: 0 0 30px rgba(255, 56, 202, 1);
+        }
+        td.A[data-score-range="high"]:hover {
+            background: rgba(255, 56, 202, 0.5) !important;
+            box-shadow: 0 0 30px rgba(255, 65, 65, 1);
+        }
+        td.A[data-score-range="very-high"]:hover {
+            background: rgba(255, 65, 65, 0.5) !important;
+            box-shadow: 0 0 30px rgb(255, 135, 65, 1);
+        }
+        td.A[data-score-range="extreme"]:hover {
+            background: rgba(255, 233, 65, 0.5) !important;
+            box-shadow: 0 0 30px rgba(231, 255, 145, 1);
+        }
+        td.A[data-score-range]:hover span {
+            color: rgb(255, 255, 255) !important;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 1);
+        }
+
+        /* Score update highlight animation */
+        @keyframes scoreUpdate {
+            0% {
+                background: rgba(255, 255, 255, 0.25);
+                box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            }
+            50% {
+                background: var(--highlight-bg) !important;
+                box-shadow: var(--highlight-shadow) !important;
+            }
+            100% {
+                background: rgba(255, 255, 255, 0.25);
+                box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            }
+        }
+        td.A.score-update {
+            animation: scoreUpdate 1s ease-in-out;
+        }
+
+        /* Header cell hover styles matching score ranges */
+        th:nth-child(3):hover { /* Column C */
+            background: rgba(145, 198, 255, 0.5) !important;
+            box-shadow: 0 0 30px rgba(103, 139, 255, 1);
+        }
+        th:nth-child(4):hover { /* Column D */
+            background: rgba(103, 139, 255, 0.5) !important;
+            box-shadow: 0 0 30px rgba(255, 56, 202, 1);
+        }
+        th:nth-child(5):hover { /* Column E */
+            background: rgba(255, 56, 202, 0.5) !important;
+            box-shadow: 0 0 30px rgba(255, 65, 65, 1);
+        }
+        th:nth-child(6):hover { /* Column F */
+            background: rgba(255, 65, 65, 0.5) !important;
+            box-shadow: 0 0 30px rgba(255, 135, 65, 1);
+        }
+        th:last-child:hover { /* Reset button */
+            background: rgba(255, 233, 65, 0.5) !important;
+            box-shadow: 0 0 30px rgba(231, 255, 145, 1);
+        }
+        /* Keep text white and add glow for colored header hovers */
+        th:nth-child(3):hover span,
+        th:nth-child(4):hover span,
+        th:nth-child(5):hover span,
+        th:nth-child(6):hover span,
+        th:last-child:hover span {
+            color: rgb(255, 255, 255) !important;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 1);
+        }
+
+        /* Add styles for popup and overlay */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.75); /* Increased from 0.5 to 0.75 for 75% dimming */
+            z-index: 9998;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        .overlay.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 25vw; /* Decreased from 50vw to 25vw (50% smaller) */
+            height: auto;
+            background: rgba(255, 255, 255, 0.25);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 50px;
+            padding: 15px 40px 40px 40px;
+            z-index: 9999;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+        .popup.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .popup-header {
+            display: flex;
+            justify-content: center; /* Center the logo horizontally */
+            align-items: flex-start;
+            margin-bottom: 15px;
+            padding: 0;
+            position: relative; /* For absolute positioning of close button */
+        }
+        .popup-icon {
+            width: 144px; /* Increased from 120px (20% larger) */
+            height: 144px; /* Increased from 120px (20% larger) */
+            object-fit: contain;
+            padding: 0;
+            margin: 0;
+            display: block;
+        }
+        .close-button {
+            position: absolute; /* Position relative to popup-header */
+            right: 0; /* Align to right edge */
+            top: 0; /* Align to top */
+            background: none;
+            border: none;
+            color: rgb(255, 255, 255);
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+        .close-button:hover {
+            color: rgb(0, 0, 0);
+        }
+        .popup h1 {
+            color: rgb(255, 255, 255);
+            font-family: "TexGyreHeroBold", arial;
+            font-size: 18px; /* Decreased from 36px to 18px (50% smaller) */
+            margin: 0 0 15px 0;
+            text-align: left;
+        }
+        .popup p {
+            color: rgb(255, 255, 255);
+            font-family: "TexGyreHero", arial;
+            font-size: 12px; /* Decreased from 24px to 12px (50% smaller) */
+            line-height: 1.6;
+            margin: 0;
+            text-align: left;
+        }
+
+        /* Add styles for top controls wrapper */
+        .top-controls {
+            position: relative;
+            z-index: 20;
+            padding: 15px 20px 0 20px;
+            margin-bottom: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: opacity 0.3s ease;
+            height: 20px;
+        }
+        .top-controls.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* Add styles for info button */
+        .info-container {
+            display: flex;
+            justify-content: flex-start;
+            align-items: center;
+            height: 20px;
+            padding-left: 20px; /* Match table padding */
+        }
+        .info-container.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .info-button {
+            height: 20px;
+            background: rgba(255, 255, 255, 0.25);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 50px;
+            padding: 0 15px;
+            font-family: "TexGyreHero", arial;
+            font-size: 12px;
+            color: rgb(255, 255, 255);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            white-space: nowrap;
+            width: auto;
+        }
+        .info-button:hover {
+            background: rgba(255, 255, 255, 0.9);
+            color: rgb(0, 0, 0);
+        }
+
+.c {background-color: red;}
+
+    </style>
+</head>
+<body>
+    <video id="video-background" autoplay muted loop playsinline>
+        <source src="videos/bg_vid.mp4" type="video/mp4">
+    </video>
+
+    <div id="output"></div>
+
+    <!-- Add popup and overlay -->
+    <div class="overlay"></div>
+    <div class="popup">
+        <div class="popup-header">
+            <img src="svg/keeps.svg" alt="Keeps Icon" class="popup-icon">
+            <button class="close-button">&times;</button>
+        </div>
+        <h1>To keep or not to keep?</h1>
+        <p>I have too many things. Help me sort through my keepsakes by voting on entries to increase or decrease their KEEPS™ score. Your vote matters.</p>
+    </div>
+
+    <script>
+        // Global variables
+        let table = null;
+            let activeFilters = new Map();
+        let sortDirection = 'asc';
+            let isResizing = false;
+            let currentResizer = null;
+            let startX = 0;
+            let startWidth = 0;
+            let columnWidths = new Map();
+        let originalScrollPosition = 0;
+        let allRows = [];
+
+        document.addEventListener("DOMContentLoaded", function () {
+            const API_URL = "https://script.google.com/macros/s/AKfycbx4Q0GxHAzzPNOgjP9h6RObabd0vGKmllOgKJzrSN4DiQj3FV1XQZ7-Tr1jBD6BXyqGKQ/exec";
+
+            // Show popup after 1 second
+            setTimeout(() => {
+                document.querySelector('.overlay').classList.add('visible');
+                document.querySelector('.popup').classList.add('visible');
+                document.body.style.overflow = 'hidden'; // Lock scroll when popup is open
+            }, 1000);
+
+            // Close popup functionality
+            const closePopup = () => {
+                document.querySelector('.overlay').classList.remove('visible');
+                document.querySelector('.popup').classList.remove('visible');
+                document.body.style.overflow = ''; // Restore scroll when popup is closed
+            };
+
+            document.querySelector('.close-button').addEventListener('click', closePopup);
+            document.querySelector('.overlay').addEventListener('click', closePopup);
+
+            // Fetch data from the API
+            fetch(API_URL)
+                .then(response => response.json())
+                .then(data => {
+                    console.log('API Response:', data);
+                    if (!data || data.length === 0) {
+                        console.error('No data received from API');
+                        return;
+                    }
+                    renderTable(data);
+                })
+                .catch(error => {
+                    console.error('Error fetching data:', error);
+                    });
+                });
+                
+        function markFirstSevenVisible() {
+            if (!table) return;
+            
+            const visibleRows = Array.from(table.querySelectorAll('tr:not(.header-row):not(.hidden)'));
+            visibleRows.forEach((row, index) => {
+                if (index < 7) {
+                    row.classList.add('always-visible');
+                    row.style.opacity = '1';
+                } else {
+                    row.classList.remove('always-visible');
+                }
+            });
+        }
+
+        function renderTable(data) {
+            const output = document.getElementById("output");
+            output.innerHTML = ""; // Clear the output div first
+
+            // Create top controls wrapper
+            const topControls = document.createElement("div");
+            topControls.className = "top-controls";
+            output.appendChild(topControls);
+
+            // Create info container
+            const infoContainer = document.createElement("div");
+            infoContainer.className = "info-container";
+            const infoButton = document.createElement("button");
+            infoButton.className = "info-button";
+            infoButton.textContent = "INFO";
+            infoButton.onclick = () => {
+                document.querySelector('.overlay').classList.add('visible');
+                document.querySelector('.popup').classList.add('visible');
+            };
+            infoContainer.appendChild(infoButton);
+            topControls.appendChild(infoContainer);
+
+            // Create search container
+            const searchContainer = document.createElement("div");
+            searchContainer.className = "search-container";
+            const searchBox = document.createElement("input");
+            searchBox.type = "text";
+            searchBox.className = "search-box";
+            searchBox.placeholder = "Search...";
+            searchContainer.appendChild(searchBox);
+            topControls.appendChild(searchContainer);
+
+            // Create table first
+            table = document.createElement("table");
+
+            // Create scroll-to-top button
+            const scrollToTopButton = document.createElement("button");
+            scrollToTopButton.className = "scroll-to-top";
+            scrollToTopButton.textContent = "SCROLL TO TOP";
+            document.body.appendChild(scrollToTopButton);
+
+            // Add scroll event listener for scroll-to-top button visibility
+            window.addEventListener('scroll', () => {
+                if (window.scrollY > window.innerHeight) {
+                    scrollToTopButton.classList.add('visible');
+                    } else {
+                    scrollToTopButton.classList.remove('visible');
+                }
+            });
+
+            // Add click event listener for scroll-to-top button
+            scrollToTopButton.addEventListener('click', () => {
+                window.scrollTo({
+                    top: 0,
+                    behavior: 'smooth'
+                });
+            });
+
+            // Create floating text box
+            const floatingText = document.createElement('div');
+            floatingText.className = 'floating-text';
+            document.body.appendChild(floatingText);
+
+            // Create header row first so we can reference it for scroll animation
+            const headerRow = document.createElement("tr");
+            headerRow.classList.add("header-row");
+            const headers = ["SCORE", "IMAGE", "YEAR", "DESCRIPTION", "SENTIMENTAL VALUE", "ORIGIN", "RESET"];
+            headers.forEach((header, colIndex) => {
+                const th = document.createElement("th");
+                
+                if (colIndex === 0) { // Score column with SVG icon
+                    const scoreHeader = document.createElement("div");
+                    scoreHeader.style.width = "100%";
+                    scoreHeader.style.height = "40px"; // Set fixed height to match header
+                    scoreHeader.style.display = "flex";
+                    scoreHeader.style.justifyContent = "center";
+                    scoreHeader.style.alignItems = "center";
+                    scoreHeader.style.cursor = "pointer";
+                    scoreHeader.style.padding = "0"; // Remove padding
+                    
+                    // Create SVG element
+                    const svg = document.createElement("img");
+                    svg.src = "svg/keeps.svg";
+                    svg.style.width = "100%";
+                    svg.style.height = "100%";
+                    svg.style.objectFit = "contain";
+                    svg.style.padding = "0"; // Remove padding
+                    svg.style.margin = "0 auto"; // Center the SVG
+                    
+                    // Add error handler to fallback to PNG if SVG fails
+                    svg.onerror = function() {
+                        this.src = "svg/keeps.png";
+                    };
+                    
+                    scoreHeader.appendChild(svg);
+                    th.appendChild(scoreHeader);
+                    
+                    // Make the cell background transparent
+                    th.style.background = "transparent";
+                    th.style.boxShadow = "none";
+                    th.style.border = "none";
+                    th.style.padding = "0"; // Remove padding
+                    th.style.minWidth = "160px"; // Set fixed width
+                    th.style.width = "160px"; // Force width
+                    
+                    // Add click handler for score sorting
+                    th.addEventListener('click', () => {
+                        if (!th.classList.contains('asc') && !th.classList.contains('desc')) {
+                            sortDirection = 'desc';
+                            th.classList.add('desc');
+                            sortTableByColumn(table, colIndex, sortDirection);
+                        } else if (th.classList.contains('desc')) {
+                            sortDirection = 'asc';
+                            th.classList.remove('desc');
+                            th.classList.add('asc');
+                            sortTableByColumn(table, colIndex, sortDirection);
+                        } else {
+                            th.classList.remove('asc');
+                            resetColumnSort(table, colIndex);
+                        }
+                    });
+                } else if (colIndex === 6) { // Reset button in last column
+                    const resetButton = document.createElement("button");
+                    resetButton.className = "reset-button";
+                    const span = document.createElement("span");
+                    span.textContent = "RESET";
+                    resetButton.appendChild(span);
+                    resetButton.onclick = resetAll;
+                    th.appendChild(resetButton);
+                    th.onclick = resetAll;
+                } else {
+                    const span = document.createElement("span");
+                    span.textContent = header;
+                    th.appendChild(span);
+                }
+                
+                if (colIndex >= 2 && colIndex <= 5) { // Sortable columns
+                    th.classList.add('sortable');
+                    th.addEventListener('click', () => {
+                        if (!th.classList.contains('asc') && !th.classList.contains('desc')) {
+                            sortDirection = 'asc';
+                            th.classList.add('asc');
+                        sortTableByColumn(table, colIndex, sortDirection);
+                        } else if (th.classList.contains('asc')) {
+                            sortDirection = 'desc';
+                            th.classList.remove('asc');
+                            th.classList.add('desc');
+                            sortTableByColumn(table, colIndex, sortDirection);
+                        } else {
+                            th.classList.remove('desc');
+                            resetColumnSort(table, colIndex);
+                        }
+                    });
+                }
+                
+                headerRow.appendChild(th);
+            });
+            table.appendChild(headerRow);
+
+            // Create data rows
+            data.forEach((item, index) => {
+                const tr = document.createElement("tr");
+                tr.setAttribute('data-row-id', item.rowId);
+                
+                // Create cells for each column
+                const cells = [
+                    item.score, // Column A: Score
+                    item.image, // Column B: Image
+                    item.year, // Column C: Year
+                    item.description, // Column D: Description
+                    item.sentimentalValue, // Column E: Sentimental Value
+                    item.origin, // Column F: Origin
+                    item.finalColumn // Column G: Final
+                ];
+
+                cells.forEach((cell, colIndex) => {
+                    const td = document.createElement("td");
+                    
+                    if (colIndex === 1) { // Image column
+                            const img = document.createElement("img");
+                        img.src = `images/IMG_${String(index + 1).padStart(5, '0')}.jpeg`;
+                        img.classList.add('spinning-image');
+                        
+                        img.addEventListener('click', () => {
+                            img.classList.add('spin');
+                            setTimeout(() => {
+                                img.classList.remove('spin');
+                            }, 600);
+                        });
+                        
+                        const addHoverEffect = () => {
+                            td.classList.add("hover-effect");
+                            td.offsetHeight;
+                        };
+                        
+                        const removeHoverEffect = () => {
+                            td.classList.remove("hover-effect");
+                        };
+                        
+                        td.addEventListener("mouseenter", addHoverEffect);
+                        td.addEventListener("mouseleave", removeHoverEffect);
+                        img.addEventListener("mouseenter", addHoverEffect);
+                        img.addEventListener("mouseleave", removeHoverEffect);
+                        
+                            td.appendChild(img);
+                    } else if (colIndex === 6) { // Column G: Final column with voting buttons
+                            const span = document.createElement("span");
+                        span.textContent = cell;
+                            td.appendChild(span);
+                        
+                        // Add voting buttons to this cell
+                        const voteContainer = document.createElement("div");
+                        voteContainer.className = "vote-cell";
+                        
+                        const keepButton = document.createElement("button");
+                        keepButton.textContent = "KEEP";
+                        keepButton.className = "vote-button keep";
+                        keepButton.onclick = () => submitVote(item.rowId, 'keep');
+                        
+                        const throwButton = document.createElement("button");
+                        throwButton.textContent = "THROW";
+                        throwButton.className = "vote-button throw";
+                        throwButton.onclick = () => submitVote(item.rowId, 'throw');
+                        
+                        voteContainer.appendChild(keepButton);
+                        voteContainer.appendChild(throwButton);
+                        td.appendChild(voteContainer);
+                        
+                        // Check for specific words in cells
+                        const cellValue = String(cell || '').toLowerCase();
+                        if (cellValue.includes('ja')) {
+                            td.classList.add('contains-ja');
+                        } else if (cellValue.includes('kanske')) {
+                            td.classList.add('contains-kanske');
+                        } else if (cellValue.includes('nej')) {
+                            td.classList.add('contains-nej');
+                        }
+                        } else {
+                            const span = document.createElement("span");
+                        if (colIndex === 0) { // Score column
+                            const score = parseFloat(cell) || 0;
+                            span.textContent = score;
+                            
+                            // Add score range class based on value
+                            if (score >= 30000) {
+                                td.setAttribute('data-score-range', 'extreme');
+                            } else if (score >= 25000) {
+                                td.setAttribute('data-score-range', 'very-high');
+                            } else if (score >= 20000) {
+                                td.setAttribute('data-score-range', 'high');
+                            } else if (score >= 15000) {
+                                td.setAttribute('data-score-range', 'medium');
+                            } else if (score >= 10000) {
+                                td.setAttribute('data-score-range', 'low');
+                            }
+                        } else {
+                            span.textContent = cell;
+                        }
+                            td.appendChild(span);
+                            
+                            // Add filtering functionality for columns C, E, and F
+                        if (colIndex === 2 || colIndex === 4 || colIndex === 5) {
+                                td.classList.add('filtered-cell');
+                                td.addEventListener('click', () => {
+                                const value = span.textContent.trim();
+                                    const column = colIndex;
+                                    
+                                    if (activeFilters.has(column) && activeFilters.get(column) === value) {
+                                        activeFilters.delete(column);
+                                        td.classList.remove('active');
+                                        applyFilters();
+                                        return;
+                                    }
+                                    
+                                if (activeFilters.size === 0) {
+                                    originalScrollPosition = window.scrollY;
+                                }
+                                
+                                    document.querySelectorAll('.filtered-cell').forEach(cell => {
+                                        if (cell.parentElement.children[column] === cell) {
+                                            cell.classList.remove('active');
+                                        }
+                                    });
+                                    
+                                    td.classList.add('active');
+                                    activeFilters.set(column, value);
+                                    applyFilters();
+                                });
+                            }
+                            
+                            // Add hover effect for column F
+                        if (colIndex === 5) {
+                                td.addEventListener('mousemove', (e) => {
+                                    const origin = cell.trim();
+                                const score = item.score;
+                                    floatingText.textContent = `Score: ${score}`;
+                                    floatingText.style.left = (e.clientX + 10) + 'px';
+                                    floatingText.style.top = (e.clientY + 10) + 'px';
+                                    floatingText.classList.add('visible');
+                                });
+                                
+                                td.addEventListener('mouseleave', () => {
+                                    floatingText.classList.remove('visible');
+                                });
+                        }
+                    }
+                    
+                    const columnClass = String.fromCharCode(65 + colIndex);
+                    const rowClass = (index + 3).toString();
+                    td.classList.add(columnClass, rowClass);
+                    tr.classList.add('filtered-row', 'visible');
+                    
+                    tr.appendChild(td);
+                });
+
+                table.appendChild(tr);
+                allRows.push(tr);
+            });
+
+            output.appendChild(table);
+            initResizableColumns();
+            storeColumnWidths();
+            applyColumnWidths();
+            setupSearch();
+
+            // After creating all rows and before adding scroll event listener
+            markFirstSevenVisible();
+
+            // Add scroll event listener for fade effect
+            const stickyHeader = table.querySelector('.header-row');
+            const topControlsElement = document.querySelector('.top-controls');
+            const headerBottom = stickyHeader.getBoundingClientRect().bottom;
+            const fadeDistance = 100; // Distance over which the fade occurs
+            const viewportHeight = window.innerHeight;
+            let lastScrollY = window.scrollY;
+
+            window.addEventListener('scroll', () => {
+                // Handle top controls visibility
+                const currentScrollY = window.scrollY;
+                if (currentScrollY > lastScrollY) {
+                    // Scrolling down
+                    topControlsElement.classList.add('hidden');
+                } else {
+                    // Scrolling up
+                    topControlsElement.classList.remove('hidden');
+                }
+                lastScrollY = currentScrollY;
+
+                const rows = table.querySelectorAll('.filtered-row:not(.hidden)');
+                rows.forEach(row => {
+                    // Skip opacity calculation for always-visible rows
+                    if (row.classList.contains('always-visible')) {
+                        row.style.opacity = '1';
+                        return;
+                    }
+
+                    const rowTop = row.getBoundingClientRect().top;
+                    const rowBottom = row.getBoundingClientRect().bottom;
+                    
+                    // Calculate opacity based on position relative to header
+                    let topOpacity = 1;
+                    let bottomOpacity = 1;
+                    
+                    // Fade out when passing under header
+                    if (rowTop < headerBottom) {
+                        const distance = headerBottom - rowTop;
+                        topOpacity = Math.max(0, 1 - (distance / fadeDistance));
+                    }
+                    
+                    // Fade in when scrolling back up
+                    if (rowBottom > headerBottom) {
+                        const distance = rowBottom - headerBottom;
+                        topOpacity = Math.min(1, distance / fadeDistance);
+                    }
+
+                    // Bottom fade out
+                    if (rowBottom > viewportHeight) {
+                        const distance = rowBottom - viewportHeight;
+                        bottomOpacity = Math.max(0, 1 - (distance / fadeDistance));
+                    }
+                    
+                    // Bottom fade in
+                    if (rowTop < viewportHeight) {
+                        const distance = viewportHeight - rowTop;
+                        bottomOpacity = Math.min(1, distance / fadeDistance);
+                    }
+                    
+                    // Use the minimum opacity between top and bottom fades
+                    row.style.opacity = Math.min(topOpacity, bottomOpacity);
+                });
+            });
+        }
+
+        // Function to submit votes
+        function submitVote(rowId, vote) {
+            const API_URL = "https://script.google.com/macros/s/AKfycbx4Q0GxHAzzPNOgjP9h6RObabd0vGKmllOgKJzrSN4DiQj3FV1XQZ7-Tr1jBD6BXyqGKQ/exec";
+            
+            fetch(API_URL, {
+                method: 'POST',
+                body: JSON.stringify({
+                    rowId: rowId,
+                    vote: vote
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update the score display
+                    const row = document.querySelector(`tr[data-row-id="${rowId}"]`);
+                    if (row) {
+                        const scoreCell = row.querySelector('td.A');
+                        if (scoreCell) {
+                            const scoreSpan = scoreCell.querySelector('span');
+                            if (scoreSpan) {
+                                scoreSpan.textContent = data.newScore;
+                            }
+                            
+                            // Update the score range attribute
+                            const score = parseFloat(data.newScore) || 0;
+                            if (score >= 30000) {
+                                scoreCell.setAttribute('data-score-range', 'extreme');
+                                scoreCell.style.setProperty('--highlight-bg', 'rgba(255, 233, 65, 0.5)');
+                                scoreCell.style.setProperty('--highlight-shadow', '0 0 30px rgba(231, 255, 145, 1)');
+                            } else if (score >= 25000) {
+                                scoreCell.setAttribute('data-score-range', 'very-high');
+                                scoreCell.style.setProperty('--highlight-bg', 'rgba(255, 65, 65, 0.5)');
+                                scoreCell.style.setProperty('--highlight-shadow', '0 0 30px rgba(255, 135, 65, 1)');
+                            } else if (score >= 20000) {
+                                scoreCell.setAttribute('data-score-range', 'high');
+                                scoreCell.style.setProperty('--highlight-bg', 'rgba(255, 56, 202, 0.5)');
+                                scoreCell.style.setProperty('--highlight-shadow', '0 0 30px rgba(255, 65, 65, 1)');
+                            } else if (score >= 15000) {
+                                scoreCell.setAttribute('data-score-range', 'medium');
+                                scoreCell.style.setProperty('--highlight-bg', 'rgba(103, 139, 255, 0.5)');
+                                scoreCell.style.setProperty('--highlight-shadow', '0 0 30px rgba(255, 56, 202, 1)');
+                            } else if (score >= 10000) {
+                                scoreCell.setAttribute('data-score-range', 'low');
+                                scoreCell.style.setProperty('--highlight-bg', 'rgba(145, 198, 255, 0.5)');
+                                scoreCell.style.setProperty('--highlight-shadow', '0 0 30px rgba(103, 139, 255, 1)');
+                            } else {
+                                scoreCell.removeAttribute('data-score-range');
+                                scoreCell.style.setProperty('--highlight-bg', 'rgba(255, 255, 255, 0.75)');
+                                scoreCell.style.setProperty('--highlight-shadow', '0 0 30px rgba(255, 255, 255, 1)');
+                            }
+
+                            // Add and remove the highlight animation
+                            scoreCell.classList.add('score-update');
+                            setTimeout(() => {
+                                scoreCell.classList.remove('score-update');
+                            }, 1000);
+                        }
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error submitting vote:', error);
+            });
+        }
+
+        function calculateSentimentalScores(data) {
+            // Skip header rows (0 and 1)
+            const entries = data.slice(2);
+            
+            // Group entries by origin (column F, index 5)
+            const originGroups = {};
+            
+            entries.forEach(row => {
+                if (row.length > 5) { // Ensure row has enough columns
+                    const origin = row[5].trim();
+                    const sentimentalValue = parseFloat(row[4]) || 0; // Column E, index 4
+                    
+                    if (!originGroups[origin]) {
+                        originGroups[origin] = {
+                            values: [],
+                            count: 0
+                        };
+                    }
+                    
+                    originGroups[origin].values.push(sentimentalValue);
+                    originGroups[origin].count++;
+                }
+            });
+            
+            // Calculate scores for each origin
+            const scores = {};
+            
+            for (const [origin, data] of Object.entries(originGroups)) {
+                const N = data.count; // Number of items
+                const sum = data.values.reduce((acc, si) => {
+                    return acc + (si * Math.exp(si));
+                }, 0);
+                
+                // Calculate final score using the formula: S = sum(si * e^si) / sqrt(N)
+                const score = Math.floor(sum / Math.sqrt(N));
+                scores[origin] = score;
+            }
+            
+            return scores;
+        }
+
+        function sortTableByColumn(table, columnIndex, direction) {
+            const tbody = table;
+            const rows = Array.from(tbody.querySelectorAll('tr')).slice(1); // Skip header row
+            
+            rows.sort((a, b) => {
+                const valueA = a.children[columnIndex].textContent.trim();
+                const valueB = b.children[columnIndex].textContent.trim();
+                
+                // Try to convert to numbers if possible
+                const numA = parseFloat(valueA);
+                const numB = parseFloat(valueB);
+                
+                if (!isNaN(numA) && !isNaN(numB)) {
+                    return direction === 'asc' ? numA - numB : numB - numA;
+                } else {
+                    // If not numbers, sort as strings
+                    return direction === 'asc' 
+                        ? valueA.localeCompare(valueB)
+                        : valueB.localeCompare(valueA);
+                }
+            });
+            
+            // Clear and re-append sorted rows
+            rows.forEach(row => tbody.appendChild(row));
+
+            // Mark first 7 rows as always visible
+            markFirstSevenVisible();
+
+            // Scroll to top
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        }
+
+        function resetColumnSort(table, columnIndex) {
+            const tbody = table;
+            const rows = Array.from(tbody.querySelectorAll('tr')).slice(1); // Skip header row
+            
+            // Reset to original order by sorting by rowId
+            rows.sort((a, b) => {
+                const valueA = parseInt(a.getAttribute('data-row-id') || 0);
+                const valueB = parseInt(b.getAttribute('data-row-id') || 0);
+                return valueA - valueB;
+            });
+            
+            // Clear and re-append sorted rows
+            rows.forEach(row => tbody.appendChild(row));
+
+            // Mark first 7 rows as always visible
+            markFirstSevenVisible();
+
+            // Scroll to top
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        }
+
+        function resetAll() {
+            // Clear all active filters
+            activeFilters.clear();
+            
+            // Remove active class from all filtered cells
+            document.querySelectorAll('.filtered-cell.active').forEach(cell => {
+                cell.classList.remove('active');
+            });
+            
+            // Show all rows
+            const rows = table.querySelectorAll('tr:not(.header-row)');
+            rows.forEach(row => {
+                row.classList.remove('hidden');
+                row.classList.add('visible');
+            });
+            
+            // Reset sort direction and remove sort indicators
+            sortDirection = 'asc';
+            document.querySelectorAll('.sortable').forEach(cell => {
+                cell.classList.remove('asc', 'desc');
+            });
+
+            // Reset table to original order by sorting by rowId
+            const tbody = table;
+            const rowsToSort = Array.from(tbody.querySelectorAll('tr:not(.header-row)'));
+            rowsToSort.sort((a, b) => {
+                const valueA = parseInt(a.getAttribute('data-row-id') || 0);
+                const valueB = parseInt(b.getAttribute('data-row-id') || 0);
+                return valueA - valueB;
+            });
+            
+            // Clear and re-append sorted rows
+            rowsToSort.forEach(row => tbody.appendChild(row));
+
+            // Mark first 7 rows as always visible
+            markFirstSevenVisible();
+
+            // Scroll to top
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+
+            // Reapply column widths after animation
+            setTimeout(() => {
+                applyColumnWidths();
+            }, 300);
+        }
+
+        function storeColumnWidths() {
+            const headerCells = table.querySelectorAll('th');
+            headerCells.forEach((cell, index) => {
+                columnWidths.set(index, cell.offsetWidth);
+            });
+        }
+
+        function applyColumnWidths() {
+            columnWidths.forEach((width, index) => {
+                table.querySelectorAll(`tr td:nth-child(${index + 1}), tr th:nth-child(${index + 1})`).forEach(cell => {
+                    cell.style.width = `${width}px`;
+                });
+            });
+        }
+
+        function applyFilters() {
+            if (!table) return;
+            
+            const rows = table.querySelectorAll('tr:not(.header-row)');
+            let hasChanges = false;
+            
+            rows.forEach(row => {
+                let shouldShow = true;
+                
+                // Check if row matches all active filters
+                activeFilters.forEach((value, column) => {
+                    const cell = row.children[column];
+                    if (!cell) return;
+                    
+                    const span = cell.querySelector('span');
+                    if (!span) return;
+                    
+                    const cellValue = span.textContent.trim();
+                    if (cellValue !== value) {
+                        shouldShow = false;
+                    }
+                });
+                
+                // Handle visibility using classes
+                if (shouldShow) {
+                    row.classList.remove('hidden');
+                    row.classList.add('visible');
+                    hasChanges = true;
+                } else {
+                    row.classList.remove('visible');
+                    row.classList.add('hidden');
+                    hasChanges = true;
+                }
+            });
+
+            // Mark first 7 visible rows after applying filters
+            markFirstSevenVisible();
+
+            // If there were changes, reapply column widths after animation
+            if (hasChanges) {
+                setTimeout(() => {
+                    applyColumnWidths();
+                    // If we're applying a filter, scroll to top
+                    // If we're removing the last filter, restore original position
+                    if (activeFilters.size > 0) {
+                        window.scrollTo({
+                            top: 0,
+                            behavior: 'smooth'
+                        });
+                    } else {
+                        window.scrollTo({
+                            top: originalScrollPosition,
+                            behavior: 'smooth'
+                        });
+                    }
+                }, 300);
+            }
+        }
+
+        function initResizableColumns() {
+            const headerCells = table.querySelectorAll('th');
+            
+            headerCells.forEach(cell => {
+                // Skip the first cell (reset button)
+                if (cell === headerCells[0]) return;
+                
+                cell.classList.add('resizable');
+                
+                // Add left resize handle
+                const leftResizeHandle = document.createElement('div');
+                leftResizeHandle.className = 'resize-handle left';
+                cell.appendChild(leftResizeHandle);
+                
+                // Add right resize handle
+                const rightResizeHandle = document.createElement('div');
+                rightResizeHandle.className = 'resize-handle right';
+                cell.appendChild(rightResizeHandle);
+                
+                // Function to handle resize start
+                const startResize = (e, handle) => {
+                    isResizing = true;
+                    currentResizer = handle;
+                    startX = e.pageX;
+                    startWidth = cell.offsetWidth;
+                    const isLeftHandle = handle.classList.contains('left');
+                    
+                    // Add resizing class to body to prevent text selection
+                    document.body.classList.add('resizing');
+                    
+                    // Add event listeners for mouse move and up
+                    document.addEventListener('mousemove', (e) => handleResize(e, isLeftHandle));
+                    document.addEventListener('mouseup', stopResize);
+                };
+                
+                // Add event listeners to both handles
+                leftResizeHandle.addEventListener('mousedown', (e) => startResize(e, leftResizeHandle));
+                rightResizeHandle.addEventListener('mousedown', (e) => startResize(e, rightResizeHandle));
+            });
+        }
+        
+        function handleResize(e, isLeftHandle) {
+            if (!isResizing) return;
+            
+            const cell = currentResizer.parentElement;
+            const columnIndex = Array.from(cell.parentElement.children).indexOf(cell);
+            const deltaX = e.pageX - startX;
+            
+            // Calculate new width based on which handle is being dragged
+            const newWidth = isLeftHandle ? startWidth - deltaX : startWidth + deltaX;
+            
+            // Set width for all cells in this column
+            table.querySelectorAll(`tr td:nth-child(${columnIndex + 1}), tr th:nth-child(${columnIndex + 1})`).forEach(cell => {
+                cell.style.width = `${newWidth}px`;
+            });
+
+            // Store the new width
+            columnWidths.set(columnIndex, newWidth);
+        }
+        
+        function stopResize() {
+            isResizing = false;
+            currentResizer = null;
+            document.body.classList.remove('resizing');
+            document.removeEventListener('mousemove', handleResize);
+            document.removeEventListener('mouseup', stopResize);
+        }
+
+        // Add search functionality
+        function setupSearch() {
+            const searchBox = document.querySelector('.search-box');
+            if (!searchBox) return;
+
+            searchBox.addEventListener('input', function() {
+                const searchTerm = this.value.toLowerCase();
+                const rows = table.querySelectorAll('tr:not(.header-row)');
+                
+                rows.forEach(row => {
+                    let text = '';
+                    // Get text from all cells in the row
+                    row.querySelectorAll('td').forEach(cell => {
+                        // Skip the voting cell
+                        if (cell.classList.contains('vote-cell')) return;
+                        
+                        // Get text from span if it exists
+                        const span = cell.querySelector('span');
+                        if (span) {
+                            text += span.textContent + ' ';
+                        }
+                        
+                        // Get text from buttons if they exist
+                        cell.querySelectorAll('button').forEach(button => {
+                            text += button.textContent + ' ';
+                        });
+                    });
+                    
+                    text = text.toLowerCase().trim();
+                    
+                    if (text.includes(searchTerm)) {
+                        row.classList.remove('hidden');
+                        row.classList.add('visible');
+                    } else {
+                        row.classList.remove('visible');
+                        row.classList.add('hidden');
+                    }
+                });
+                
+                // Mark first 7 visible rows after search
+                markFirstSevenVisible();
+                
+                // Reapply column widths after search
+                setTimeout(() => {
+                    applyColumnWidths();
+                }, 300);
+            });
+        }
+    </script>
+</body>
+</html>
